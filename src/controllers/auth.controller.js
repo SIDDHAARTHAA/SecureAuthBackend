@@ -22,19 +22,23 @@ export const signup = async (req, res) => {
         password: hashedPassword,
     })
 
-   const accessToken = generateAccessToken(user._id);
-   const refreshToken = generateRefreshToken(user._id);
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
 
-   user.refreshToken = refreshToken;
-   await user.save();
+    user.refreshToken = refreshToken;
+    await user.save();
 
-   return res.status(200).json({
+    res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000
+    })
+
+    return res.status(200).json({
         message: "Signup successful",
         accessToken,
-        refreshToken
-   })
-
-
+    });
 };
 
 export const login = async (req, res) => {
@@ -63,10 +67,18 @@ export const login = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
+
+    //set the refreshToken in cookie
+    res.cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000
+    })
+
     return res.status(200).json({
         message: "Login successful",
         accessToken,
-        refreshToken
     });
 }
 
@@ -91,7 +103,7 @@ export const me = async (req, res) => {
 
 
 export const refresh = async (req, res) => {
-    const { refreshToken } = req.body;
+    const { refreshToken } = req.cookies.refreshToken;
 
     let decoded;
 
