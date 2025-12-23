@@ -5,95 +5,79 @@ import jwt from "jsonwebtoken"
 export const signup = async (req, res) => {
     const { name, email, password } = req.body;
 
-    if (!name || !email || !password) return res.status(400).json({ message: "Missing required fields" });
-
-    try {
-        const existingUser = await User.findOne({ email });
-
-        if (existingUser) {
-            return res.status(409).json({
-                message: "Email already registered"
-            });
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        const newUser = await User.create({
-            name,
-            email,
-            password: hashedPassword,
-        })
-
-        const token = jwt.sign(
-            { userId: newUser._id },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN }
-        )
-
-        return res.status(201).json({
-            message: "User created",
-            token: token
-        })
-
-    } catch (error) {
-        console.log(error);
-        if (error.code === 11000) {
-            return res.status(409).json({
-                message: "Email already registered"
-            });
-        }
-
-        return res.status(500).json({
-            message: "Internal server error",
-            error: error
-        });
+    if (!name || !email || !password) {
+        const err = new Error("Missing required fields");
+        err.statusCode = 400;
+        throw err;
     }
+
+
+    const existingUser = await User.findOne({ email });
+
+    if (existingUser) {
+        const err = new Error("Email already registered");
+        err.statusCode = 409;
+        throw err;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+    })
+
+    const token = jwt.sign(
+        { userId: newUser._id },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN }
+    )
+
+    return res.status(201).json({
+        message: "User created",
+        token: token
+    })
+
+
 };
 
 export const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-        return res.status(400).json({
-            message: "Missing credentials"
-        });
+        const err = new Error("Missing required fields");
+        err.statusCode = 400;
+        throw err;
     }
 
-    try {
-        const user = await User.findOne({ email });
 
-        if (!user) {
-            return res.status(401).json({
-                message: "Invalid email or password"
-            });
-        }
+    const user = await User.findOne({ email });
 
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-
-        if (!isPasswordValid) {
-            return res.status(401).json({
-                message: "Invalid email or password"
-            });
-        }
-
-        const token = jwt.sign(
-            { userId: user._id },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN }
-        )
-
-        return res.status(200).json({
-            message: "Login successful",
-            token
-        });
-
-    } catch (error) {
-        console.log(error);
-
-        return res.status(500).json({
-            message: "Internal server error"
-        });
+    if (!user) {
+        const err = new Error("Invalid email or password");
+        err.statusCode = 401;
+        throw err;
     }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+        const err = new Error("Invalid email or password");
+        err.statusCode = 401;
+        throw err;
+    }
+
+    const token = jwt.sign(
+        { userId: user._id },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN }
+    )
+
+    return res.status(200).json({
+        message: "Login successful",
+        token
+    });
 }
 
 //what does bcrypt.compare actually do
