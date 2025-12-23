@@ -1,6 +1,7 @@
 import User from "../models/user.model.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken"
+import { generateAccessToken, generateRefreshToken } from "../utils/token.js";
 
 export const signup = async (req, res) => {
     const { name, email, password } = req.body;
@@ -15,22 +16,23 @@ export const signup = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = await User.create({
+    const user = await User.create({
         name,
         email,
         password: hashedPassword,
     })
 
-    const token = jwt.sign(
-        { userId: newUser._id },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
-    )
+   const accessToken = generateAccessToken(user._id);
+   const refreshToken = generateRefreshToken(user._id);
 
-    return res.status(201).json({
-        message: "User created",
-        token: token
-    })
+   user.refreshToken = refreshToken;
+   await user.save();
+
+   return res.status(200).json({
+        message: "Signup successful",
+        accessToken,
+        refreshToken
+   })
 
 
 };
@@ -54,15 +56,17 @@ export const login = async (req, res) => {
         throw err;
     }
 
-    const token = jwt.sign(
-        { userId: user._id },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
-    )
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    //store refresh token in DB
+    user.refreshToken = refreshToken;
+    await user.save();
 
     return res.status(200).json({
         message: "Login successful",
-        token
+        accessToken,
+        refreshToken
     });
 }
 
@@ -70,7 +74,7 @@ export const login = async (req, res) => {
 export const me = async (req, res) => {
     const userId = req.userId;
 
-    const user =await User.findById(userId).select("name email");;
+    const user = await User.findById(userId).select("name email");;
 
     if (!user) {
         const err = new Error("User not found");
@@ -82,5 +86,38 @@ export const me = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email
+    });
+};
+
+
+export const refresh = async (req, res) => {
+    const { refreshToken } = req.body;
+
+    let decoded;
+
+    try {
+        decoded = jwt.verify(
+            refreshToken,
+            process.env.REFRESH_TOKEN_SECRET
+        );
+    } catch (error) {
+        const err = new Error("Invalid refresh token");
+        err.statusCode = 401;
+        throw err;
+    }
+
+    const user = await User.findById(decoded.userId);
+
+    if (!user || user.refreshToken !== refreshToken) {
+        //revoked => access token has been used by someone else
+        const err = new Error("Refresh token revoked");
+        err.statusCode = 401;
+        throw err;
+    }
+
+    const newAccessToken = generateAccessToken(user._id);
+
+    return res.status(200).json({
+        accessToken: newAccessToken
     });
 };
