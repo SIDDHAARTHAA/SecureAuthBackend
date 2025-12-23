@@ -5,13 +5,6 @@ import jwt from "jsonwebtoken"
 export const signup = async (req, res) => {
     const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
-        const err = new Error("Missing required fields");
-        err.statusCode = 400;
-        throw err;
-    }
-
-
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -45,13 +38,6 @@ export const signup = async (req, res) => {
 export const login = async (req, res) => {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-        const err = new Error("Missing required fields");
-        err.statusCode = 400;
-        throw err;
-    }
-
-
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -80,6 +66,21 @@ export const login = async (req, res) => {
     });
 }
 
-//what does bcrypt.compare actually do
-//after signup, does the user be loged in or should he log in once again?
-//because, in signup route also we are sending token
+
+export const me = async (req, res) => {
+    const userId = req.userId;
+
+    const user =await User.findById(userId).select("name email");;
+
+    if (!user) {
+        const err = new Error("User not found");
+        err.statusCode = 404;
+        throw err;
+    }
+
+    return res.status(200).json({
+        id: user._id,
+        name: user.name,
+        email: user.email
+    });
+};
