@@ -3,6 +3,8 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth.routes.js"
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { generalLimiter } from "./middlewares/rateLimit.middleware.js";
+import { requestIdMiddleware } from "./middlewares/request.middleware.js";
+import { tracer } from "./middlewares/tracer.middleware.js";
 
 
 const app = express();
@@ -12,6 +14,8 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use(generalLimiter);
+
+app.use(requestIdMiddleware);
 
 app.get("/health", (req, res) => {
     res.send("OK");
@@ -24,6 +28,8 @@ app.use((req, res, next) => {
   err.statusCode = 404;
   next(err);
 });
+
+app.use(tracer);
 
 app.use(errorHandler);
 

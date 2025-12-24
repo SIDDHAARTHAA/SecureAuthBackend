@@ -1,4 +1,6 @@
 import jwt from "jsonwebtoken";
+import { log } from "../utils/logger.js";
+import { trace } from "../utils/trace.js";
 
 //checks if the users is loged in
 export const authMiddleware = (req, res, next) => {
@@ -18,8 +20,15 @@ export const authMiddleware = (req, res, next) => {
 
         req.userId = decoded.userId;
 
+        trace(req, "auth success");
         next();
     } catch (error) {
+        log({
+            level: "auth",
+            message: "Invalid or expired token",
+            req,
+        });
+
         return res.status(401).json({
             message: "Invalid or expired token"
         });

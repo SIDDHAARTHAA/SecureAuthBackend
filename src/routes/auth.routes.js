@@ -13,7 +13,7 @@ router.post("/signup", authLimiter, validate(signupSchema), asyncHandler(signup)
 router.post("/login", authLimiter, validate(loginSchema), asyncHandler(login));
 router.post("/logout", generalLimiter, asyncHandler(logout));
 
-router.post("/refresh", authLimiter, authMiddleware, asyncHandler(refresh));
+router.post("/refresh", authLimiter, asyncHandler(refresh));
 
 router.delete("/admin/users/:id", generalLimiter, authMiddleware, asyncHandler(requireRole("ADMIN")), asyncHandler(deleteUser));
 

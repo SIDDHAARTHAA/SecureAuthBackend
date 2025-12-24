@@ -2,6 +2,7 @@ import User from "../models/user.model.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken"
 import { generateAccessToken, generateRefreshToken } from "../utils/token.js";
+import { log } from "../utils/logger.js";
 
 export const signup = async (req, res) => {
     const { name, email, password } = req.body;
@@ -9,6 +10,12 @@ export const signup = async (req, res) => {
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
+        log({
+            level: "warn",
+            message: "Email already registered",
+            req,
+            meta: { email }
+        });
         const err = new Error("Email already registered");
         err.statusCode = 409;
         throw err;
@@ -35,6 +42,15 @@ export const signup = async (req, res) => {
         maxAge: 7 * 24 * 60 * 60 * 1000
     })
 
+    log({
+        level: "info",
+        message: "User signed in",
+        req,
+        meta: {
+            userId: user._id
+        }
+    });
+
     return res.status(200).json({
         message: "Signup successful",
         accessToken,
@@ -47,6 +63,12 @@ export const login = async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
+        log({
+            level: "warn",
+            message: "Invalid email or password",
+            req,
+            meta: { email }
+        });
         const err = new Error("Invalid email or password");
         err.statusCode = 401;
         throw err;
@@ -55,6 +77,12 @@ export const login = async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
+        log({
+            level: "warn",
+            message: "Invalid password",
+            req,
+            meta: { email }
+        });
         const err = new Error("Invalid email or password");
         err.statusCode = 401;
         throw err;
@@ -76,6 +104,15 @@ export const login = async (req, res) => {
         maxAge: 7 * 24 * 60 * 60 * 1000
     })
 
+    log({
+        level: "info",
+        message: "User logged in",
+        req,
+        meta: {
+            userId: user._id
+        }
+    });
+
     return res.status(200).json({
         message: "Login successful",
         accessToken,
@@ -89,6 +126,12 @@ export const me = async (req, res) => {
     const user = await User.findById(userId).select("name email");;
 
     if (!user) {
+        log({
+            level: "warn",
+            message: "Invalid password",
+            req,
+            meta: { email }
+        });
         const err = new Error("User not found");
         err.statusCode = 404;
         throw err;
@@ -113,6 +156,11 @@ export const refresh = async (req, res) => {
             process.env.REFRESH_TOKEN_SECRET
         );
     } catch (error) {
+        log({
+            level: "error",
+            message: "Refresh token mismatch",
+            req,
+        });
         const err = new Error("Invalid refresh token");
         err.statusCode = 401;
         throw err;
@@ -122,6 +170,14 @@ export const refresh = async (req, res) => {
 
     if (!user || user.refreshToken !== refreshToken) {
         //revoked => access token has been used by someone else
+        log({
+            level: "error",
+            message: "Refresh token revokedd",
+            req,
+            meta: {
+                userId: decoded.userId
+            }
+        });
         const err = new Error("Refresh token revoked");
         err.statusCode = 401;
         throw err;
@@ -173,7 +229,7 @@ export const deleteUser = async (req, res) => {
 
     const deletedUser = await User.findByIdAndDelete(userId);
 
-    if(!deletedUser){
+    if (!deletedUser) {
         const err = new Error("User does not exist");
         err.statusCode = 404;
         throw err;
