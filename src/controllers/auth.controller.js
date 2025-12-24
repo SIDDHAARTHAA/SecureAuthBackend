@@ -101,9 +101,9 @@ export const me = async (req, res) => {
     });
 };
 
-
+//Reuse refresh token
 export const refresh = async (req, res) => {
-    const { refreshToken } = req.cookies.refreshToken;
+    const refreshToken = req.cookies.refreshToken;
 
     let decoded;
 
@@ -128,7 +128,8 @@ export const refresh = async (req, res) => {
     }
 
     const newAccessToken = generateAccessToken(user._id);
-
+    //notice that we are not refreshing refreshToken, because this is a "reuse refresh token" method and has enought security
+    //for more security, we can implement "rotate refresh token" where we also refresh the refreshToken, invalidate the old in db, detect token reuse attacs
     return res.status(200).json({
         accessToken: newAccessToken
     });
@@ -164,4 +165,22 @@ export const logout = async (req, res) => {
     res.clearCookie("refreshToken");
 
     return res.status(204).send();
+}
+
+
+export const deleteUser = async (req, res) => {
+    const userId = req.params.id;
+
+    const deletedUser = await User.findByIdAndDelete(userId);
+
+    if(!deletedUser){
+        const err = new Error("User does not exist");
+        err.statusCode = 404;
+        throw err;
+    }
+
+    res.status(200).json({
+        message: "User deleted successfully",
+        user: deletedUser
+    })
 }

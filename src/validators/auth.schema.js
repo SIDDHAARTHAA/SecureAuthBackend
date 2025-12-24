@@ -11,7 +11,3 @@ export const loginSchema = z.object({
     email: z.string().email(), // Fixed the key name here
     password: z.string().min(1)
 });
-
-export const refreshSchema = z.object({
-    refreshToken: z.string().min(1)
-});
