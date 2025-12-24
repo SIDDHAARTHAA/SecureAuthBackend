@@ -1,4 +1,3 @@
-```markdown
 ![alt text](src/assets/working_model.png)
 
 ## 🏗️ System Architecture Diagram
